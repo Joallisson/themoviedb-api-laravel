@@ -5,6 +5,7 @@ namespace App\Http\Controllers\v1\users;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -36,6 +37,18 @@ class UserController extends Controller
     }
 
     public function store(Request $request){
+
+        // $validator = Validator::make($request->all(), [
+        //     'title' => 'required|unique:posts|max:255',
+        //     'body' => 'required',
+        // ]);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|min:6|max:255|string',
+            'email' => 'max:255|required|email|unique:App\Models\User,email',
+            'username' => 'required|min:8|max:50|string',
+            'password' => 'required|min:8|max:50|string|numeric'
+        ]);
 
         $data = $request->all();
 
