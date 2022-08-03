@@ -38,17 +38,25 @@ class UserController extends Controller
 
     public function store(Request $request){
 
-        // $validator = Validator::make($request->all(), [
-        //     'title' => 'required|unique:posts|max:255',
-        //     'body' => 'required',
-        // ]);
+        $message = [ 'required' => 'The :attribute field is required.'
+            // 'name.required' => 'O campo name é obrigatório',
+            // 'email.required' => 'O campo email é obrigatório',
+            // 'username.required' => 'O campo username é obrigatório',
+            // 'password.required' => 'O campo password é obrigatório'
+        ];
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|min:6|max:255|string',
-            'email' => 'max:255|required|email|unique:App\Models\User,email',
-            'username' => 'required|min:8|max:50|string',
-            'password' => 'required|min:8|max:50|string|numeric'
-        ]);
+        $validator = Validator::make($request->all(),
+                                    [
+                                        'name' => 'required|min:6|max:255|string',
+                                        'email' => 'max:255|required|email|unique:App\Models\User,email',
+                                        'username' => 'required|min:4|max:50|string',
+                                        'password' => 'required|min:8|max:50|string'
+                                    ],
+                                    $message);
+
+        if($validator->fails()){
+            return $message;
+        }
 
         $data = $request->all();
 
