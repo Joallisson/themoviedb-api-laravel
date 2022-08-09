@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\v1\users;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -38,26 +39,33 @@ class UserController extends Controller
 
     public function store(Request $request){
 
-        $message = [ 'required' => 'The :attribute field is required.'
-            // 'name.required' => 'O campo name é obrigatório',
-            // 'email.required' => 'O campo email é obrigatório',
-            // 'username.required' => 'O campo username é obrigatório',
-            // 'password.required' => 'O campo password é obrigatório'
+        $message = [
+            'required'  => 'O campo :attribute é obrigatório.',
+            'min'       => 'O campo :attribute deve ter no mínimo :min caracteres',
+            'max'       => 'O campo :attribute deve ter no máximo :max caracteres',
+            'string'    => 'O campo :attribute deve ser um texto'
         ];
 
         $validator = Validator::make($request->all(),
                                     [
                                         'name' => 'required|min:6|max:255|string',
-                                        'email' => 'max:255|required|email|unique:App\Models\User,email',
+                                        'email' => 'max:255|required|email|unique:users',
                                         'username' => 'required|min:4|max:50|string',
                                         'password' => 'required|min:8|max:50|string'
                                     ],
                                     $message);
 
-        if($validator->fails()){
-            return $message;
+
+        if($validator->fails())
+        {
+            return $validator->getMessageBag();
         }
 
+        return "Passou";
+
+
+
+        //CÓDIGO QUE PRESTA
         $data = $request->all();
 
         try {
