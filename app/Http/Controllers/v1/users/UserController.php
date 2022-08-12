@@ -40,32 +40,29 @@ class UserController extends Controller
     public function store(Request $request){
 
         $message = [
-            'required'  => 'O campo :attribute é obrigatório.',
-            'min'       => 'O campo :attribute deve ter no mínimo :min caracteres',
-            'max'       => 'O campo :attribute deve ter no máximo :max caracteres',
-            'string'    => 'O campo :attribute deve ser um texto'
+            'required'          => 'O campo :attribute é obrigatório.',
+            'min'               => 'O campo :attribute deve ter no mínimo :min caracteres',
+            'max'               => 'O campo :attribute deve ter no máximo :max caracteres',
+            'string'            => 'O campo :attribute deve ser um texto',
+            'email'             => 'O email fornecido não está no formato correto',
+            'email.unique'      => 'O email fornecido já está em uso',
+            'username.unique'   => 'O username fornecido já está em uso'
         ];
 
         $validator = Validator::make($request->all(),
                                     [
                                         'name' => 'required|min:6|max:255|string',
                                         'email' => 'max:255|required|email|unique:users',
-                                        'username' => 'required|min:4|max:50|string',
+                                        'username' => 'required|min:4|max:50|unique:users|string',
                                         'password' => 'required|min:8|max:50|string'
                                     ],
                                     $message);
 
-
         if($validator->fails())
         {
-            return $validator->getMessageBag();
+            return response()->json($validator->getMessageBag());
         }
 
-        return "Passou";
-
-
-
-        //CÓDIGO QUE PRESTA
         $data = $request->all();
 
         try {
