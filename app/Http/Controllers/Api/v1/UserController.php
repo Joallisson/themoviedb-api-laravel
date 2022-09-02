@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -15,7 +14,6 @@ class UserController extends Controller
     {
         $this->user = $user;
     }
-
 
     public function index(){
 
@@ -37,8 +35,16 @@ class UserController extends Controller
         }
     }
 
-    public function store(StoreUserRequest $request){
+    public function store(StoreUserRequest $request)
+    {
         $data = $request->all();
+
+        if($request->hasFile('photo_profile'))
+        {
+            $image = $request->file('photo_profile');
+            $imagePath = $image->store('photos_profile', 'public');
+            $data["photo_profile"] = $imagePath;
+        }
 
         try {
 
@@ -72,7 +78,6 @@ class UserController extends Controller
         } catch (\Throwable $th) {
             return $th->getMessage();
         }
-
     }
 
     public function destroy($id){
