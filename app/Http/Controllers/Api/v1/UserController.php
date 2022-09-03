@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
@@ -42,7 +43,7 @@ class UserController extends Controller
         if($request->hasFile('photo_profile'))
         {
             $image = $request->file('photo_profile');
-            $imagePath = $image->store('photos_profile', 'public');
+            $imagePath = $image->store('photo_profile', 'public');
             $data["photo_profile"] = $imagePath;
         }
 
@@ -84,15 +85,16 @@ class UserController extends Controller
 
         try {
             $user = $this->user->findOrFail($id);
+            Storage::disk('public')->delete($user->photo_profile);
             $user->delete();
 
             return response()->json([
                 'message' => 'Usuário deletado com sucesso'
             ]);
-
-        } catch (\Throwable $th) {
-
-            return $th->getMessage();
+        }
+        catch (\Throwable $th)
+        {
+            return response()->json("USUÁRIO NÃO ENCONTRADO NO BANCO DE DADOS", 500);
         }
     }
 }
