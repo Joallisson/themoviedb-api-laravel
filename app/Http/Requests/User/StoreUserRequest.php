@@ -27,10 +27,11 @@ class StoreUserRequest extends FormRequest
     public function rules()
     {
         return [
-            'name'     => 'required|min:6|max:255|string',
-            'email'    => 'max:255|required|email|unique:users',
-            'username' => 'required|min:4|max:50|unique:users|string',
-            'password' => 'required|min:8|max:50|string'
+            'name'          => 'required|min:6|max:255|string',
+            'email'         => 'max:255|required|email|unique:users',
+            'username'      => 'required|min:4|max:50|unique:users|string',
+            'password'      => 'required|min:8|max:50|string',
+            'photo_profile' => 'bail|nullable|image|mimes:jpg,jpeg,png|max:2048|'
         ];
     }
 
@@ -43,7 +44,10 @@ class StoreUserRequest extends FormRequest
                 'string'            => 'O campo :attribute deve ser um texto',
                 'email'             => 'O email fornecido não está no formato correto',
                 'email.unique'      => 'O email fornecido já está em uso',
-                'username.unique'   => 'O username fornecido já está em uso'
+                'username.unique'   => 'O username fornecido já está em uso',
+                'image'             => 'O arquivo escolhido deve ser uma imagem',
+                'mimes'             => 'A imagem deve ser uma desses tipos: jpg,jpeg,png',
+                'max'               => 'A imagem deve ter no máximo 2MB'
         ];
     }
 
