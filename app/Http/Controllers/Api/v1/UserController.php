@@ -4,9 +4,13 @@ namespace App\Http\Controllers\Api\v1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\StoreUserRequest;
+use App\Http\Requests\User\UserLoginRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
@@ -96,5 +100,57 @@ class UserController extends Controller
         {
             return response()->json("USUÁRIO NÃO ENCONTRADO NO BANCO DE DADOS", 500);
         }
+    }
+
+    public function login(UserLoginRequest $request)
+    {
+        $user = User::where('email', $request->email)->first();
+
+        if(!$user || !Hash::check($request->password, $user->password))
+        {
+            throw ValidationException::withMessages([
+                'error' => 'As credenciais estão incorretas'
+            ]);
+        }
+
+        $userId = $user->id;
+        $existsToken = DB::table('personal_access_tokens')
+                            ->where('tokenable_id', $userId)
+                            ->get();
+
+        if($existsToken->count() > 0){
+            return response()->json(['error' => "O Usuário já está logado"]);
+        }
+
+        $token = $user->createToken('access_token')->plainTextToken;
+        $user->update(['remember_token' => $token]);
+
+        return response()->json([
+            'user' => $user
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        try
+        {
+            $request->user()->update(['remember_token' => null]);
+            $request->user()->currentAccessToken()->delete();
+
+            return response()->json([
+                'Logout realizado com sucesso'
+            ]);
+        }
+        catch (\Throwable $th)
+        {
+            return response()->json([
+                'Erro ao realizar logout'
+            ]);
+        }
+    }
+
+    public function resetPassword()
+    {
+        return "RESET PASSWORD";
     }
 }

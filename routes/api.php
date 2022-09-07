@@ -20,10 +20,18 @@ use Illuminate\Support\Facades\Route;
 // });
 
 
-Route::prefix('users')-> group(function(){
-    Route::get('/', [UserController::class, 'index']);
-    Route::get('/{id}', [UserController::class, 'show']);
+Route::prefix('user')->group(function()
+{
     Route::post('/', [UserController::class, 'store']);
-    Route::put('/{id}', [UserController::class, 'update']);
-    Route::delete('/{id}', [UserController::class, 'destroy']);
+    Route::post('/login', [UserController::class, 'login']);
+    Route::post('reset_password', [UserController::class, 'resetPassword']);
+
+    Route::middleware('auth:sanctum')->group(function()
+    {
+        Route::get('/', [UserController::class, 'index']);
+        Route::get('/{id}', [UserController::class, 'show']);
+        Route::put('/{id}', [UserController::class, 'update']);
+        Route::delete('/{id}', [UserController::class, 'destroy']);
+        Route::post('/logout', [UserController::class, 'logout']);
+    });
 });
