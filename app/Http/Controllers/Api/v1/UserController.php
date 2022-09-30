@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -149,8 +150,28 @@ class UserController extends Controller
         }
     }
 
-    public function resetPassword()
+    public function resetPassword(Request $request)
     {
-        return "RESET PASSWORD";
+        try {
+            $user = $this->user->where(["email" => $request->email])->select('email')->get();
+
+            if($user->count() == 0){
+                return response()->json(["error" => "Email não encontrado"], 404);
+            }
+            
+            $email = $user[0]->email;
+            $code = rand(000000, 999999);
+
+            Mail::send('Mails.ResetPassword', ["code" => $code], function($mensagem) use($email){
+                $mensagem->from('joallisson.teste@outlook.com', 'Reviews');
+                $mensagem->subject('Código de segurança');
+                $mensagem->to($email);
+            });
+        }
+        catch (\Throwable $th)
+        {
+            return response()->json(['msg' => 'error']);
+        }
+        return response()->json(['msg' => 'Foi enviado um código de verificação pro seu email'], 200);
     }
 }
