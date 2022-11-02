@@ -23,11 +23,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('user')->group(function()
 {
+    //forgot password
     Route::post('/', [UserController::class, 'store']);
     Route::post('/login', [UserAuthController::class, 'login']);
     Route::get('reset_password', [UserAuthController::class, 'resetPassword']);
     Route::get('validate_code/{user_id}/{code}', [UserAuthController::class, 'validateCode']);
 
+    //routes authenticate
     Route::middleware('auth:sanctum')->group(function()
     {
         Route::get('/', [UserController::class, 'index']);
@@ -35,5 +37,6 @@ Route::prefix('user')->group(function()
         Route::put('/{id}', [UserController::class, 'update']);
         Route::delete('/{id}', [UserController::class, 'destroy']);
         Route::post('/logout', [UserAuthController::class, 'logout']);
+        Route::put('/update_password/{user_id}', [UserAuthController::class, 'updatePassword']);
     });
 });
