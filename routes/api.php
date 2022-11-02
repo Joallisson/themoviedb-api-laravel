@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\v1\UserController;
+use App\Http\Controllers\Auth\v1\UserAuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -23,8 +24,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('user')->group(function()
 {
     Route::post('/', [UserController::class, 'store']);
-    Route::post('/login', [UserController::class, 'login']);
-    Route::post('reset_password', [UserController::class, 'resetPassword']);
+    Route::post('/login', [UserAuthController::class, 'login']);
+    Route::get('reset_password', [UserAuthController::class, 'resetPassword']);
 
     Route::middleware('auth:sanctum')->group(function()
     {
@@ -32,6 +33,6 @@ Route::prefix('user')->group(function()
         Route::get('/{id}', [UserController::class, 'show']);
         Route::put('/{id}', [UserController::class, 'update']);
         Route::delete('/{id}', [UserController::class, 'destroy']);
-        Route::post('/logout', [UserController::class, 'logout']);
+        Route::post('/logout', [UserAuthController::class, 'logout']);
     });
 });
