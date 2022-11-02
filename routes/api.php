@@ -26,6 +26,7 @@ Route::prefix('user')->group(function()
     Route::post('/', [UserController::class, 'store']);
     Route::post('/login', [UserAuthController::class, 'login']);
     Route::get('reset_password', [UserAuthController::class, 'resetPassword']);
+    Route::get('validate_code/{user_id}/{code}', [UserAuthController::class, 'validateCode']);
 
     Route::middleware('auth:sanctum')->group(function()
     {

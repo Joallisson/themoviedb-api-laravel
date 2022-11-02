@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Auth\v1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\UserLoginRequest;
+use App\Models\ResetCode;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -70,14 +72,32 @@ class UserAuthController extends Controller
     public function resetPassword(Request $request)
     {
         try {
-            $user = $this->user->where(["email" => $request->email])->select('email')->get();
+            $user = $this->user->where(["email" => $request->email])->first();
 
-            if($user->count() == 0){
+            if(!$user){
                 return response()->json(["error" => "Email não encontrado"], 404);
             }
 
-            $email = $user[0]->email;
+            $email = $user->email;
             $code = Str::random(8);
+
+            $codeExist = ResetCode::where('user_id', $user->id)->first();
+
+
+
+            if($codeExist)
+            {
+                $codeExist->update([
+                    'code' => $code,
+                    'count' => 0
+                ]);
+            }else{
+                ResetCode::create([
+                    'code' => $code,
+                    'count' => 0,
+                    'user_id' => $user->id
+                ]);
+            }
 
             Mail::send('Mails.ResetPassword', ["code" => $code], function($mensagem) use($email){
                 $mensagem->from('joallisson.teste@outlook.com', 'Reviews');
@@ -91,5 +111,44 @@ class UserAuthController extends Controller
             //return response()->json(['msg' => 'error']);
         }
         return response()->json(['msg' => 'Foi enviado um código de verificação pro seu email'], 200);
+    }
+
+    public function validateCode(Request $request, $user_id, $code)
+    {
+        $user = $this->user->find($user_id);
+        $codeExist = ResetCode::where('user_id', $user_id)
+                                ->where('code', $code)
+                                ->first();
+
+        if(!$codeExist){
+            return response()->json([
+                'error' => 'CÓDIGO INVÁLIDO'
+            ], 498);
+        }
+
+        if($codeExist->count > 4)
+        {
+            return response()->json([
+                'error' => 'TENTATIVAS EXCEDIDAS'
+            ], 401);
+        }
+
+        if($codeExist->updated_at->diffInMinutes(Carbon::now()) > 15)
+        {
+            $codeExist->delete();
+            return response()->json([
+                'error' => 'CÓDIGO EXPIRADO'
+            ], 401);
+        }
+
+        $codeExist->delete();
+
+        if($user->remember_token != null){//Se o usuário tiver logado em otro dispositivo e quiser resetar a senha
+            $request->user()->update(['remember_token' => null]);
+            $request->user()->currentAccessToken()->delete();
+        }
+
+        $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
+        $user->update(['remember_token' => $tokenResetPassword]);
     }
 }
