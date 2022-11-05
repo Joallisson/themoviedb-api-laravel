@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateResetCodesTable extends Migration
+class CreateResetPasswordTokensTable extends Migration
 {
     /**
      * Run the migrations.
@@ -13,11 +13,12 @@ class CreateResetCodesTable extends Migration
      */
     public function up()
     {
-        Schema::create('reset_codes', function (Blueprint $table) {
+        Schema::create('reset_password_tokens', function (Blueprint $table) {
             $table->id();
-            $table->string('code', 12);
-            $table->integer('count', false, true);
-            $table->foreignId('user_id')->constrained();
+            $table->string('token');
+            $table->string('email')->constrained();
+            $table->integer('tries')->default(0);
+            $table->string('next_try_time');
             $table->timestamps();
         });
     }
@@ -29,6 +30,6 @@ class CreateResetCodesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('reset_codes');
+        Schema::dropIfExists('reset_password_tokens');
     }
 }

@@ -5,15 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class ResetCode extends Model
+class ResetPasswordToken extends Model
 {
     use HasFactory;
 
-    protected $table = 'reset_codes';
-
     protected $fillable = [
-        'code',
-        'count',
+        'token',
         'user_id'
     ];
 

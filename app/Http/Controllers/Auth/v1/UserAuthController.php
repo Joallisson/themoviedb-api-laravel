@@ -5,15 +5,14 @@ namespace App\Http\Controllers\Auth\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\User\UserLoginRequest;
-use App\Models\ResetCode;
+use App\Jobs\resetPasswordJob;
+use App\Jobs\revokeTokenJob;
+use App\Models\ResetPasswordToken;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Str;
 
 class UserAuthController extends Controller
 {
@@ -80,84 +79,76 @@ class UserAuthController extends Controller
             }
 
             $email = $user->email;
-            $code = Str::random(8);
 
-            $codeExist = ResetCode::where('user_id', $user->id)->first();
-
-
-
-            if($codeExist)
-            {
-                $codeExist->update([
-                    'code' => $code,
-                    'count' => 0
-                ]);
-            }else{
-                ResetCode::create([
-                    'code' => $code,
-                    'count' => 0,
-                    'user_id' => $user->id
-                ]);
+            if($user->remember_token != null){//Se o usuário tiver logado em outro dispositivo e quiser resetar a senha
+                $user->tokens()->delete();
+                $user->update(['remember_token' => null]);
             }
 
-            Mail::send('Mails.ResetPassword', ["code" => $code], function($mensagem) use($email){
-                $mensagem->from('joallisson.teste@outlook.com', 'Reviews');
-                $mensagem->subject('Código de segurança');
-                $mensagem->to($email);
-            });
+            $tokenCreated = $user->createToken('access_token')->plainTextToken;
+            $resetPasswordToken = ResetPasswordToken::create([
+                'user_id' => $user->id,
+                'token' => $tokenCreated,
+            ]);
+
+            $linkResetPassword = "http://127.0.0.1:8000/reset_password/".$user->email."/".$tokenCreated; //essa rota é a do frontend, e lá dentro vai ter o endpoint para resetar a senha e deve ser passao o token do user
+
+            resetPasswordJob::dispatch($linkResetPassword, $email)->delay(now());
+
+            revokeTokenJob::dispatch($user, $resetPasswordToken)->delay(now()->addMinutes(1));
         }
         catch (\Throwable $th)
         {
             throw $th;
-            //return response()->json(['msg' => 'error']);
         }
-        return response()->json(['msg' => 'Foi enviado um código de verificação pro seu email'], 200);
+
+        return response()->json(['msg' => 'Foi enviado um link para resetar sua senha no seu email'], 200);
     }
 
-    public function validateCode($user_id, $code)
-    {
-        $user = $this->user->find($user_id);
-        $codeExist = ResetCode::where('user_id', $user_id)
-                                ->where('code', $code)
-                                ->first();
+    // public function validateCode($user_id, $code)
+    // {
+    //     $user = $this->user->find($user_id);
+    //     $codeExist = ResetCode::where('user_id', $user_id)
+    //                             ->where('code', $code)
+    //                             ->first();
 
-        if(!$codeExist){
-            return response()->json([
-                'error' => 'CÓDIGO INVÁLIDO'
-            ], 498);
-        }
+    //     if(!$codeExist){
+    //         return response()->json([
+    //             'error' => 'código incorreto, você ainda tem mais 2 tentativas'
+    //         ], 498);
+    //     }
 
-        if($codeExist->count > 4)
-        {
-            $codeExist->delete();
-            return response()->json([
-                'error' => 'TENTATIVAS EXCEDIDAS'
-            ], 401);
-        }
+    //     if($codeExist->count > 4)
+    //     {
+    //         $codeExist->delete();
+    //         return response()->json([
+    //             'error' => 'TENTATIVAS EXCEDIDAS'
+    //         ], 401);
+    //     }
 
-        if($codeExist->updated_at->diffInMinutes(Carbon::now()) > 15)
-        {
-            $codeExist->delete();
-            return response()->json([
-                'error' => 'CÓDIGO EXPIRADO'
-            ], 401);
-        }
+    //     if($codeExist->updated_at->diffInMinutes(Carbon::now()) > 15)
+    //     {
+    //         $codeExist->delete();
+    //         return response()->json([
+    //             'error' => 'CÓDIGO EXPIRADO'
+    //         ], 401);
+    //     }
 
-        $codeExist->delete();
+    //     $codeExist->delete();
 
-        if($user->remember_token != null){//Se o usuário tiver logado em otro dispositivo e quiser resetar a senha
-            $user->update(['remember_token' => null]);
-            $tokenId = DB::table('personal_access_tokens')->where('tokenable_id', $user_id)->first()->id;
-            $user->tokens()->where('id', $tokenId)->delete();
-        }
+    //     if($user->remember_token != null){//Se o usuário tiver logado em otro dispositivo e quiser resetar a senha
+    //         $user->update(['remember_token' => null]);
+    //         $tokenId = DB::table('personal_access_tokens')->where('tokenable_id', $user_id)->first()->id;
+    //         $user->tokens()->where('id', $tokenId)->delete();
+    //     }
 
-        $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
-        $user->update(['remember_token' => $tokenResetPassword]);
+    //     $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
+    //     $user->update(['remember_token' => $tokenResetPassword]);
 
-        return response()->json([
-            'tokenResetPassword' => $tokenResetPassword
-        ]);
-    }
+    //     return response()->json([
+    //         'tokenResetPassword' => $tokenResetPassword
+    //     ]);
+    // }
 
     public function updatePassword(UpdatePasswordRequest $request, $user_id)
     {
