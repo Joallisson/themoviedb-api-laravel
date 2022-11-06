@@ -7,12 +7,13 @@ use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\User\UserLoginRequest;
 use App\Jobs\resetPasswordJob;
 use App\Jobs\revokeTokenJob;
-use App\Models\ResetPasswordToken;
+use App\Models\PasswordReset;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class UserAuthController extends Controller
 {
@@ -26,8 +27,7 @@ class UserAuthController extends Controller
     {
         $user = User::where('email', $request->email)->first();
 
-        if(!$user || !Hash::check($request->password, $user->password))
-        {
+        if (!$user || !Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
                 'error' => 'As credenciais estão incorretas'
             ]);
@@ -35,10 +35,10 @@ class UserAuthController extends Controller
 
         $userId = $user->id;
         $existsToken = DB::table('personal_access_tokens')
-                            ->where('tokenable_id', $userId)
-                            ->get();
+            ->where('tokenable_id', $userId)
+            ->get();
 
-        if($existsToken->count() > 0){
+        if ($existsToken->count() > 0) {
             return response()->json(['error' => "O Usuário já está logado"]);
         }
 
@@ -52,17 +52,14 @@ class UserAuthController extends Controller
 
     public function logout(Request $request)
     {
-        try
-        {
+        try {
             $request->user()->update(['remember_token' => null]);
             $request->user()->currentAccessToken()->delete();
 
             return response()->json([
                 'Logout realizado com sucesso'
             ]);
-        }
-        catch (\Throwable $th)
-        {
+        } catch (\Throwable $th) {
             return response()->json([
                 'Erro ao realizar logout'
             ]);
@@ -74,81 +71,74 @@ class UserAuthController extends Controller
         try {
             $user = $this->user->where(["email" => $request->email])->first();
 
-            if(!$user){
+            if (!$user) {
                 return response()->json(["error" => "Email não encontrado"], 404);
             }
 
             $email = $user->email;
 
-            if($user->remember_token != null){//Se o usuário tiver logado em outro dispositivo e quiser resetar a senha
-                $user->tokens()->delete();
-                $user->update(['remember_token' => null]);
+            $tryResetPassword = PasswordReset::where('email', $user->email)->first();
+            if ($tryResetPassword) { //Se o usuário resetar a senha enquanto o token não expirou
+                $tryResetPassword->delete();
             }
 
-            $tokenCreated = $user->createToken('access_token')->plainTextToken;
-            $resetPasswordToken = ResetPasswordToken::create([
-                'user_id' => $user->id,
-                'token' => $tokenCreated,
-            ]);
+            $tokenCreated = Str::random(60);
 
-            $linkResetPassword = "http://127.0.0.1:8000/reset_password/".$user->email."/".$tokenCreated; //essa rota é a do frontend, e lá dentro vai ter o endpoint para resetar a senha e deve ser passao o token do user
+            $passwordReset = new PasswordReset();
+            $passwordReset->email = $user->email;
+            $passwordReset->token = $tokenCreated;
+            $passwordReset->user_id = $user->id;
+            $passwordReset->save();
+
+            $linkResetPassword = "http://127.0.0.1:8000/reset_password_reviews/" . $user->email . "/" . $tokenCreated; //essa rota é a do frontend, e lá dentro vai ter o endpoint para resetar a senha e deve ser passao o token do user
 
             resetPasswordJob::dispatch($linkResetPassword, $email)->delay(now());
 
-            revokeTokenJob::dispatch($user, $resetPasswordToken)->delay(now()->addMinutes(1));
-        }
-        catch (\Throwable $th)
-        {
+            revokeTokenJob::dispatch($passwordReset)->delay(now()->addMinutes(15)); ///ALTERAR PARA 15 MINUTOS >>>>>>>>>>>>>>>>>
+        } catch (\Throwable $th) {
             throw $th;
         }
 
         return response()->json(['msg' => 'Foi enviado um link para resetar sua senha no seu email'], 200);
     }
 
-    // public function validateCode($user_id, $code)
-    // {
-    //     $user = $this->user->find($user_id);
-    //     $codeExist = ResetCode::where('user_id', $user_id)
-    //                             ->where('code', $code)
-    //                             ->first();
+    public function validateCode($email, $token)
+    {
+        $passwordReset = PasswordReset::where('email', $email)
+            ->where('token', $token)
+            ->first();
 
-    //     if(!$codeExist){
-    //         return response()->json([
-    //             'error' => 'código incorreto, você ainda tem mais 2 tentativas'
-    //         ], 498);
-    //     }
+        if (!$passwordReset) {
+            return response()->json([
+                'msg' => 'O link para resetar a senha expirou'
+            ]);
+        }
 
-    //     if($codeExist->count > 4)
-    //     {
-    //         $codeExist->delete();
-    //         return response()->json([
-    //             'error' => 'TENTATIVAS EXCEDIDAS'
-    //         ], 401);
-    //     }
+        $user = User::find($passwordReset->user_id);
 
-    //     if($codeExist->updated_at->diffInMinutes(Carbon::now()) > 15)
-    //     {
-    //         $codeExist->delete();
-    //         return response()->json([
-    //             'error' => 'CÓDIGO EXPIRADO'
-    //         ], 401);
-    //     }
+        $expireToken = PasswordReset::where('email', $user->email)->first();
+        if ($expireToken) { //Se o token de reset da senha do usuário não tiver expirado na hora que ele criar uma nova senha
+            $expireToken->delete();
+        }
 
-    //     $codeExist->delete();
+        $access_token = DB::table('personal_access_tokens')->where('tokenable_id', $user->id)->first();
 
-    //     if($user->remember_token != null){//Se o usuário tiver logado em otro dispositivo e quiser resetar a senha
-    //         $user->update(['remember_token' => null]);
-    //         $tokenId = DB::table('personal_access_tokens')->where('tokenable_id', $user_id)->first()->id;
-    //         $user->tokens()->where('id', $tokenId)->delete();
-    //     }
+        if ($access_token) { //deslogar o usuário caso ele esteja logado em outro dispositivo
+            $user->update(['remember_token' => null]);
+            $user->tokens()->delete();
+        }
 
-    //     $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
-    //     $user->update(['remember_token' => $tokenResetPassword]);
+        $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
 
-    //     return response()->json([
-    //         'tokenResetPassword' => $tokenResetPassword
-    //     ]);
-    // }
+        $new_access_token = DB::table('personal_access_tokens')->where('tokenable_id', $user->id)->first();
+
+        revokeTokenJob::dispatch($new_access_token)->delay(now()->addMinutes(15));
+
+        return response()->json([
+            'id' => $user->id,
+            'tokenResetPassword' => $tokenResetPassword
+        ]);
+    }
 
     public function updatePassword(UpdatePasswordRequest $request, $user_id)
     {

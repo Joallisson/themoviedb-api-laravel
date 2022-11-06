@@ -19,12 +19,11 @@ class revokeTokenJob implements ShouldQueue
      *
      * @return void
      */
-    protected $user, $tokenPassword;
+    protected $passwordReset;
 
-    public function __construct(User $user, $resetPasswordToken)
+    public function __construct( $passwordReset)
     {
-        $this->user = $user;
-        $this->resetPasswordToken = $resetPasswordToken;
+        $this->passwordReset = $passwordReset;
     }
 
     /**
@@ -34,10 +33,8 @@ class revokeTokenJob implements ShouldQueue
      */
     public function handle()
     {
-        $user = $this->user;
-        $resetPasswordToken = $this->resetPasswordToken;
+        $passwordReset = $this->passwordReset;
 
-        $user->tokens()->delete();
-        $resetPasswordToken->delete();
+        $passwordReset->delete();
     }
 }
