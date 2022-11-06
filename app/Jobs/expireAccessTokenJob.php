@@ -10,7 +10,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class revokeTokenJob implements ShouldQueue
+class expireAccessTokenJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -19,12 +19,11 @@ class revokeTokenJob implements ShouldQueue
      *
      * @return void
      */
-    protected $passwordReset, $expireResetToken, $user;
+    protected $user;
 
-    public function __construct($passwordReset)
+    public function __construct(User $user)
     {
-        $this->passwordReset = $passwordReset;
-
+        $this->user = $user;
     }
 
     /**
@@ -34,8 +33,7 @@ class revokeTokenJob implements ShouldQueue
      */
     public function handle()
     {
-        $passwordReset = $this->passwordReset;
-        $passwordReset->delete();
-
+        $user = $this->user;
+        $user->tokens()->delete();
     }
 }

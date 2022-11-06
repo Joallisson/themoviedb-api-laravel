@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth\v1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\UpdatePasswordRequest;
 use App\Http\Requests\User\UserLoginRequest;
+use App\Jobs\expireAccessTokenJob;
 use App\Jobs\resetPasswordJob;
 use App\Jobs\revokeTokenJob;
 use App\Models\PasswordReset;
@@ -94,7 +95,7 @@ class UserAuthController extends Controller
 
             resetPasswordJob::dispatch($linkResetPassword, $email)->delay(now());
 
-            revokeTokenJob::dispatch($passwordReset)->delay(now()->addMinutes(15)); ///ALTERAR PARA 15 MINUTOS >>>>>>>>>>>>>>>>>
+            revokeTokenJob::dispatch($passwordReset)->delay(now()->addMinutes(15));
         } catch (\Throwable $th) {
             throw $th;
         }
@@ -130,9 +131,7 @@ class UserAuthController extends Controller
 
         $tokenResetPassword = $user->createToken('access_token')->plainTextToken;
 
-        $new_access_token = DB::table('personal_access_tokens')->where('tokenable_id', $user->id)->first();
-
-        revokeTokenJob::dispatch($new_access_token)->delay(now()->addMinutes(15));
+        expireAccessTokenJob::dispatch($user)->delay(now()->addMinutes(15));
 
         return response()->json([
             'id' => $user->id,
