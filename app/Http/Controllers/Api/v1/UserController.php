@@ -24,14 +24,20 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function show($id){
-
+    public function show($id)
+    {
         try {
-            $user = $this->user->findOrFail($id);
+            $user = $this->user->find($id);
+
+            if (!$user) {
+                return response()->json([
+                    'error' => 'Usuário não encontrado'
+                ], 404);
+            }
 
             return response()->json([
                 'user' => $user
-            ]);
+            ], 200);
         } catch (\Throwable $th) {
             return $th->getMessage();
         }
@@ -41,8 +47,7 @@ class UserController extends Controller
     {
         $data = $request->all();
 
-        if($request->hasFile('photo_profile'))
-        {
+        if ($request->hasFile('photo_profile')) {
             $image = $request->file('photo_profile');
             $imagePath = $image->store('photo_profile', 'public');
             $data["photo_profile"] = $imagePath;
@@ -58,7 +63,6 @@ class UserController extends Controller
                 'message' => 'usuário cadastrado com sucesso',
                 'data' => $user
             ]);
-
         } catch (\Throwable $th) {
             return $th->getMessage();
         }
@@ -66,7 +70,6 @@ class UserController extends Controller
 
     public function update(Request $request, $id)
     {
-
         try {
             $data = $request->all();
             $user = $this->user->findOrFail($id);
@@ -77,7 +80,6 @@ class UserController extends Controller
                 'message' => 'user atualizado com sucesso',
                 'data' => $user
             ]);
-
         } catch (\Throwable $th) {
             return $th->getMessage();
         }
@@ -94,9 +96,7 @@ class UserController extends Controller
             return response()->json([
                 'message' => 'Usuário deletado com sucesso'
             ]);
-        }
-        catch (\Throwable $th)
-        {
+        } catch (\Throwable $th) {
             return response()->json("USUÁRIO NÃO ENCONTRADO NO BANCO DE DADOS", 500);
         }
     }

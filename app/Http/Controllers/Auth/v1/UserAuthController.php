@@ -139,7 +139,7 @@ class UserAuthController extends Controller
         ]);
     }
 
-    public function updatePassword(UpdatePasswordRequest $request, $user_id)
+    public function updateForgotPassword(UpdatePasswordRequest $request, $user_id)
     {
         try {
             $user = $this->user->find($user_id);
@@ -151,7 +151,34 @@ class UserAuthController extends Controller
 
             return response()->json([
                 'msg' => 'senha alterada com sucesso'
-            ]);
+            ], 200);
+        } catch (\Throwable $th) {
+            throw $th;
+        }
+    }
+
+    public function updatePassword(UpdatePasswordRequest $request, $user_id)
+    {
+        try {
+            $user = $this->user->find($user_id);
+
+            if (!$user) {
+                return response()->json([
+                    'error' => 'Usuário não encontrado'
+                ], 404);
+            }
+
+            if (!Hash::check($request->old_password, $user->password)) {
+                return response()->json([
+                    'error' => 'Senha atual enviada não coincide com a senha cadastrada'
+                ], 404);
+            }
+
+            $user->update(['password' => bcrypt($request->password)]);
+
+            return response()->json([
+                'msg' => 'senha alterada com sucesso'
+            ], 200);
         } catch (\Throwable $th) {
             throw $th;
         }

@@ -28,25 +28,27 @@ class UpdatePasswordRequest extends FormRequest
     {
         return [
             'password' => 'required|min:8|max:50|confirmed',
-            //'password_confirmation' => 'required|min:8|max:50',
+            'password_confirmation' => 'required|min:8|max:50',
         ];
     }
 
     public function messages()
     {
         return [
-                'required'          => 'O campo :attribute é obrigatório.',
-                'min'               => 'O campo :attribute deve ter no mínimo :min caracteres',
-                'max'               => 'O campo :attribute deve ter no máximo :max caracteres',
-                'confirmed'         => 'As senhas não coincidem'
+            'required'          => 'O campo :attribute é obrigatório.',
+            'min'               => 'O campo :attribute deve ter no mínimo :min caracteres',
+            'max'               => 'O campo :attribute deve ter no máximo :max caracteres',
+            'confirmed'         => 'As senhas não coincidem'
         ];
     }
 
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(
-            response()->json( $validator->getMessageBag()->all(),
-            JsonResponse::HTTP_UNPROCESSABLE_ENTITY )
+            response()->json(
+                $validator->getMessageBag()->all(),
+                JsonResponse::HTTP_UNPROCESSABLE_ENTITY
+            )
         );
     }
 }
